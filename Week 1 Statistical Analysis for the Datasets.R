@@ -17,4 +17,14 @@ dim(accept_behaivor)
 accept_behaivor<-as.matrix(accept_behaivor)
 ?kmeans
 kmeans(accept_behaivor,3)
-plo
+
+
+####### Week 2 #######
+library(timeDate)
+gmt_shift_time<-timeDate(shift_time, FinCenter = "GMT")
+gmt_shift_time<-dayOfWeek(gmt_shift_time)
+
+gmt_session<-timeDate(app_behavior$sessionDate, FinCenter = "GMT")
+gmt_session<-dayOfWeek(gmt_session)
+app_behavior<-data.frame(app_behavior,gmt_session)
+#plot(app_behavior$gmt_session~app_behavior$pid)
