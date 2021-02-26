@@ -4,9 +4,10 @@ library(timeDate)
 library(dplyr)
 library(ggplot2)
 library(batman)
+library(class)
 
 ###### data cleaning ###### 
-setwd("...")
+setwd("~/R Code")
 nurse_info<-read.csv("nurse_info.csv", header = TRUE)
 accept_behaivor<-read.csv("accept_behavior.csv", header = TRUE)
 app_behavior<-read.csv("app_behavior.csv", header = TRUE)
@@ -73,8 +74,72 @@ app_behavior<-data.frame(app_behavior,day)
 head(app_behavior)
 weekend<-isWeekend(gmt_session)
 app_behavior<-data.frame(app_behavior,weekend)
-?isWeekend
+#?isWeekend
 holiday<-isHoliday(gmt_session)
 app_behavior<-data.frame(app_behavior,holiday)
 plot(weekend~accept_behaivor$pid)
 head(weekend)
+
+#Barplots
+counts = table(accept_behaivor_no_release$weekend_shift)
+barplot(counts, main="Non-Released Accpeted Shifts by Weekend or Weekday", xlab="Is A Weekend Shift", ylab="Accepted Shifts")
+
+counts1 = table(app_behavior$pid)
+barplot(counts1, main="Logins vs pid", xlab="pid", ylab="logins")
+mean(counts1)
+max(counts1)
+min(counts1)
+sd(counts1)
+
+#time of sessions vs viewed shifts
+
+sessiondates= strptime(app_behavior$sessionDate,format='%Y-%m-%d %H:%M:%S', tz="GMT")
+sessiontime = format(sessiondates, '%H:%M:%S');
+app_behavior=data.frame(app_behavior,sessiontime);
+
+
+viewedshifts_scaled =app_behavior$viewedShifts;
+app_behavior=data.frame(app_behavior,viewedshifts_scaled);
+plot(app_behavior$sessiontime,app_behavior$viewedshifts_scaled, ylim=c(0,50), main='Time of day vs viewed shifts', xlab = ' ', ylab='viewed shifts', las = 2);
+
+#Separate outliars
+#STEPS:
+#1st-IQR*1.5 and 3rd quantile+IQR*1.5
+#IQR = difference between Q3 and Q1
+
+Q = quantile(app_behavior$viewedShifts, probs=c(.25, .75), na.rm = FALSE);
+iqr <- IQR(app_behavior$viewedShifts);
+up <-  Q[2]+1.5*iqr # Upper Range  
+low<- Q[1]-1.5*iqr # Lower Range
+eliminated<- subset(app_behavior, app_behavior$viewedShifts > (Q[1] - 1.5*iqr) & warpbreaks$breaks < (Q[2]+1.5*iqr))
+
+plot(eliminated$sessiontime,eliminated$viewedshifts_scaled, main='Time of day vs viewed shifts', xlab = ' ', ylab='viewed shifts', las = 2);
+
+
+
+#Conclusion - Most of the nurses are clicking on a few shifts per sessions (makes sense).
+
+
+#take average logins sessions max - min per nurse
+
+#Standardize Set
+MaxViewedShifts = max(app_behavior$viewedShifts)
+MinViewedShifts = min(app_behavior$viewedShifts)
+Std_ViewedShifts = (app_behavior$viewedShifts-MinViewedShifts)/(MaxViewedShifts-MinViewedShifts);
+MaxClickedShifts = max(app_behavior$clickedShifts)
+MinClickedShifts = min(app_behavior$clickedShifts)
+Std_ClickedShifts = (app_behavior$clickedShifts-MinClickedShifts)/(MaxClickedShifts-MinClickedShifts);
+Std_app_behavior = data.frame(Std_ViewedShifts, app_behavior$pid, Std_ClickedShifts);
+Std_app_behavior = Std_app_behavior[,c(2,1,3)]
+
+Q = quantile(Std_app_behavior$Std_ViewedShifts, probs=c(.25, .75), na.rm = FALSE);
+iqr <- IQR(Std_app_behavior$Std_ViewedShifts);
+up <-  Q[2]+1.5*iqr # Upper Range  
+low<- Q[1]-1.5*iqr # Lower Range
+
+Group1 = subset(Std_app_behavior, Std_app_behavior$Std_ViewedShifts<0.005617978)
+Group2 = subset(Std_app_behavior, Std_app_behavior$Std_ViewedShifts>=0.005617978 & Std_app_behavior$Std_ViewedShifts < 0.018726592)
+Group3 = subset(Std_app_behavior, Std_app_behavior$Std_ViewedShifts>=0.018726592)
+
+plot(Group1$Std_ViewedShifts, Group1$Std_ClickedShifts)
+
