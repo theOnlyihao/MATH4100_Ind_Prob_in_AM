@@ -132,4 +132,9 @@ plot(standarized.app, col=(app.clustering$cluster+1), main="K-Means Clustering R
 app.clustering<-kmeans(standarized.app,5)
 app.clustering$cluster
 plot(standarized.app, col=(app.clustering$cluster+1), main="K-Means Clustering Results with K=5", xlab="", ylab="")
+######## PCA ########
+X<-standarized.app
+pca.app<-PCA(X,scale.unit = TRUE, graph = FALSE)
+fviz_eig(pca.app, addlabels = TRUE, ylim = c(0, 50))
+fviz_pca_var(pca.app, col.var = "black")
 
