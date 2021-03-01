@@ -123,23 +123,13 @@ plot(eliminated$sessiontime,eliminated$viewedshifts_scaled, main='Time of day vs
 #take average logins sessions max - min per nurse
 
 #Standardize Set
-MaxViewedShifts = max(app_behavior$viewedShifts)
-MinViewedShifts = min(app_behavior$viewedShifts)
-Std_ViewedShifts = (app_behavior$viewedShifts-MinViewedShifts)/(MaxViewedShifts-MinViewedShifts);
-MaxClickedShifts = max(app_behavior$clickedShifts)
-MinClickedShifts = min(app_behavior$clickedShifts)
-Std_ClickedShifts = (app_behavior$clickedShifts-MinClickedShifts)/(MaxClickedShifts-MinClickedShifts);
-Std_app_behavior = data.frame(Std_ViewedShifts, app_behavior$pid, Std_ClickedShifts);
-Std_app_behavior = Std_app_behavior[,c(2,1,3)]
-
-Q = quantile(Std_app_behavior$Std_ViewedShifts, probs=c(.25, .75), na.rm = FALSE);
-iqr <- IQR(Std_app_behavior$Std_ViewedShifts);
-up <-  Q[2]+1.5*iqr # Upper Range  
-low<- Q[1]-1.5*iqr # Lower Range
-
-Group1 = subset(Std_app_behavior, Std_app_behavior$Std_ViewedShifts<0.005617978)
-Group2 = subset(Std_app_behavior, Std_app_behavior$Std_ViewedShifts>=0.005617978 & Std_app_behavior$Std_ViewedShifts < 0.018726592)
-Group3 = subset(Std_app_behavior, Std_app_behavior$Std_ViewedShifts>=0.018726592)
-
-plot(Group1$Std_ViewedShifts, Group1$Std_ClickedShifts)
+#Standardize Set
+View(app_behavior)
+standarized.app<-scale(app_behavior[,c(-1,-2,-5,-6,-7,-8,-9)])
+app.clustering<-kmeans(standarized.app,3)
+app.clustering$cluster
+plot(standarized.app, col=(app.clustering$cluster+1), main="K-Means Clustering Results with K=3", xlab="", ylab="")
+app.clustering<-kmeans(standarized.app,5)
+app.clustering$cluster
+plot(standarized.app, col=(app.clustering$cluster+1), main="K-Means Clustering Results with K=5", xlab="", ylab="")
 
