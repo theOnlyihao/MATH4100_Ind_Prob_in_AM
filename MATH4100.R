@@ -5,6 +5,8 @@ library(dplyr)
 library(ggplot2)
 library(batman)
 library(class)
+library(FactoMineR)
+library(factoextra)
 
 ###### data cleaning ###### 
 setwd("~/R Code")
