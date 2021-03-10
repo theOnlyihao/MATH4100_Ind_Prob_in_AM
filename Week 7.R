@@ -13,7 +13,7 @@ library(fpc)
 library(magrittr)
 
 ###### wd and data sets ###### 
-setwd("/Users/yihao/Yihao/Wentworth/Mathmatics /MATH4100 Industrial Prob in applied math/nurse_and_behavior_data")
+setwd("...")
 nurse_info<-read.csv("nurse_info.csv", header = TRUE)
 accept_behaivor<-read.csv("accept_behavior.csv", header = TRUE)
 app_behavior<-read.csv("app_behavior.csv", header = TRUE)
