@@ -99,3 +99,59 @@ nurse_info<-data.frame(nurse_info,date.diff)
 nurse_info<-nurse_info[,c(1,2,3,4,5,6,13,7,8,9,10,11,12)]
 nurse_info_no_termination<-subset(nurse_info,is.na(nurse_info$termination_date))
 nurse_info_no_termination<-nurse_info_no_termination[,-10]
+
+nurse_info<-data.frame(nurse_info, apply.time=as.Date(nurse_info$IP.Apply.Timestamp,"%Y-%m-%d"), first.accept.time=as.Date(nurse_info$first_accept_timestamp,"%Y-%m-%d"),first.shift=as.Date(nurse_info$first_shift_timestamp,"%Y-%m-%d"),fifth.shift=as.Date(nurse_info$fifth_shift_timestamp,"%Y-%m-%d"),termination_date=as.Date(nurse_info$termination_timestamp,"%Y-%m-%d"))
+nurse_info<-nurse_info[,-c(5,6,7,8,9)]
+nurse_info<-nurse_info[,c(1,2,3,4,8,9,10,11,12,5,6,7)]
+date.diff<- nurse_info$first.accept.time - nurse_info$apply.time
+nurse_info<-data.frame(nurse_info,date.diff)
+nurse_info<-nurse_info[,c(1,2,3,4,5,6,13,7,8,9,10,11,12)]
+day.diff.first_fifth<-nurse_info$fifth.shift - nurse_info$first.shift
+nurse_info<-data.frame(nurse_info,day.diff.first_fifth)
+nurse_info<-nurse_info[,c(1,2,3,4,5,6,7,8,9,14,10,11,12,13)]
+
+
+######### Normalized Nurse Info and apply clustering techniques ########
+new_nurse_info3 <- left_join(nurse_info,avg.day_diff,by="pid")
+
+day.difference<-data.frame(new_nurse_info3$pid,new_nurse_info3$date.diff,new_nurse_info3$day.diff.first_fifth,new_nurse_info3$Prior.Work.History..years.,new_nurse_info3$Prior.Work.History..distinct.jobs.,new_nurse_info3$day_diff)
+day.difference$new_nurse_info3.day_diff<-na.locf(day.difference$new_nurse_info3.day_diff,fromLast = TRUE)
+day.difference$new_nurse_info3.Prior.Work.History..years.<-na.locf(day.difference$new_nurse_info3.Prior.Work.History..years.,fromLast = TRUE)
+day.difference$new_nurse_info3.Prior.Work.History..distinct.jobs.<-na.locf(day.difference$new_nurse_info3.Prior.Work.History..distinct.jobs.,fromLast = TRUE)
+day.difference$new_nurse_info3.date.diff<-na.locf(day.difference$new_nurse_info3.date.diff,fromLast = TRUE)
+day.difference$new_nurse_info3.day.diff.first_fifth<-na.locf(day.difference$new_nurse_info3.day.diff.first_fifth,fromLast = TRUE)
+pid<-as.numeric(day.difference$new_nurse_info3.pid)
+distinct.jobs<-as.numeric(day.difference$new_nurse_info3.Prior.Work.History..distinct.jobs.)
+day.difference<-data.frame(day.difference,pid,distinct.jobs)
+day.difference<-day.difference[,-c(1,5)]
+day.difference<-day.difference[,c(5,1,2,3,4,6)]
+
+std.day_diff<-scale(day.difference$new_nurse_info3.date.diff)
+std.day_diff_1st5th<-scale(day.difference$new_nurse_info3.day.diff.first_fifth)
+std.day_diff_histYears<-scale(day.difference$new_nurse_info3.Prior.Work.History..years.)
+std.day_diff_jobs<-scale(day.difference$distinct.jobs)
+std.day_diff_mean_accept_day_diff<-scale(day.difference$new_nurse_info3.day_diff)
+
+
+normal_dayDiff<-data_frame(std.day_diff,std.day_diff_1st5th,std.day_diff_histYears,std.day_diff_jobs,std.day_diff_mean_accept_day_diff)
+normal_dayDiff_clluster<-kmeans(normal_dayDiff,3)
+plot(normal_dayDiff, col=(normal_dayDiff_clluster$cluster+1), main="K-Means Clustering Results with K=3")
+
+normal_dayDiff<-normal_dayDiff[,-c(1)]
+
+pca.nurse<-PCA(normal_dayDiff,scale.unit = TRUE, graph = FALSE)
+pca_nurse <- prcomp(normal_dayDiff, scale. = TRUE)
+autoplot(pca_nurse)
+autoplot(kmeans(normal_dayDiff, 3), data = normal_dayDiff)
+autoplot(fanny(normal_dayDiff, 3), frame = TRUE)
+
+
+nurse.desc<-dimdesc(pca.nurse, axes = c(1,2), proba = 0.05)
+fviz_eig(pca.nurse, addlabels = TRUE, ylim = c(0, 100))
+fviz_pca_var(pca.nurse, col.var = "black")
+
+kNNdistplot(normal_dayDiff, k = 3)
+abline(h=100, col = "red", lty=2)
+dbscan.app<-dbscan(normal_dayDiff,eps=100,MinPts = 3)
+plot(dbscan.app,normal_dayDiff)
+
