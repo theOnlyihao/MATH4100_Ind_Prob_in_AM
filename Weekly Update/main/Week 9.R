@@ -112,7 +112,9 @@ nurse_info<-nurse_info[,c(1,2,3,4,5,6,7,8,9,14,10,11,12,13)]
 
 
 ######### Normalized Nurse Info and apply clustering techniques ########
-new_nurse_info3 <- left_join(nurse_info,avg.day_diff,by="pid")
+new_nurse_info3 <- left_join(nurse_info,avg.day_diff, by="pid")
+new_nurse_info4 <- left_join(new_nurse_info3, accept_behaivor, by="pid")
+new_nurse_info4 <- new_nurse_info4[,-c(24,25)]
 
 day.difference<-data.frame(new_nurse_info3$pid,new_nurse_info3$date.diff,new_nurse_info3$day.diff.first_fifth,new_nurse_info3$Prior.Work.History..years.,new_nurse_info3$Prior.Work.History..distinct.jobs.,new_nurse_info3$day_diff)
 day.difference$new_nurse_info3.day_diff<-na.locf(day.difference$new_nurse_info3.day_diff,fromLast = TRUE)
@@ -127,32 +129,30 @@ day.difference<-day.difference[,-c(1,5)]
 day.difference<-day.difference[,c(5,1,2,3,4,6)]
 day.difference<-day.difference[,c(-1)]
 
-daydiff_scale <- day.difference %>%           # Applying functions of dplyr
-  mutate_at(c("new_nurse_info3.date.diff","new_nurse_info3.day.diff.first_fifth","new_nurse_info3.Prior.Work.History..years.","new_nurse_info3.Prior.Work.History..distinct.jobs.","new_nurse_info3.day_diff"), ~(scale(.) %>% as.vector))
-
-std.day_diff<-scale(day.difference$new_nurse_info3.date.diff)
-std.day_diff_1st5th<-scale(day.difference$new_nurse_info3.day.diff.first_fifth)
-std.day_diff_histYears<-scale(day.difference$new_nurse_info3.Prior.Work.History..years.)
-std.day_diff_jobs<-scale(day.difference$distinct.jobs)
-std.day_diff_mean_accept_day_diff<-scale(day.difference$new_nurse_info3.day_diff)
-
-
-normal_dayDiff<-data_frame(std.day_diff,std.day_diff_1st5th,std.day_diff_histYears,std.day_diff_jobs,std.day_diff_mean_accept_day_diff)
-normal_dayDiff_clluster<-kmeans(normal_dayDiff,3)
-plot(normal_dayDiff, col=(normal_dayDiff_clluster$cluster+1), main="K-Means Clustering Results with K=3")
-
-normal_dayDiff<-normal_dayDiff[,-c(1)]
-
-pca.nurse<-PCA(daydiff_scale,scale.unit = TRUE, graph = FALSE)
+daydiff_scale <- day.difference %>%
+  mutate_at(c("new_nurse_info3.date.diff","new_nurse_info3.day.diff.first_fifth","new_nurse_info3.Prior.Work.History..years.","new_nurse_info3.day_diff","distinct.jobs"), ~(scale(.) %>% as.vector))
 pca_nurse <- prcomp(daydiff_scale, scale. = TRUE)
 autoplot(pca_nurse)
-autoplot(kmeans(normal_dayDiff, 3), data = normal_dayDiff, label = TRUE)
-autoplot(fanny(normal_dayDiff, 3), frame = TRUE)
+set.seed(6846)
+autoplot(kmeans(daydiff_scale, 3), data = daydiff_scale,lable = TRUE)
 
-kNNdistplot(normal_dayDiff, k = 3)
-abline(h=100, col = "red", lty=2)
-dbscan.app<-dbscan(normal_dayDiff,eps=100,MinPts = 3)
-plot(dbscan.app,normal_dayDiff)
+k_mean_data<-kmeans(daydiff_scale,3)
+cluster<-k_mean_data$cluster
+
+daydiff_scale<-data.frame(new_nurse_info3$pid,daydiff_scale,cluster)
+daydiff_scale<-daydiff_scale[,-c(2:6)]
+colnames(daydiff_scale)<-c("pid","cluster")
+new_nurse_info4 <- left_join(new_nurse_info4,daydiff_scale,by="pid")
+cluster1 <- subset(new_nurse_info4,cluster == 1)
+cluster1.acc<-table(cluster1$accept_day)
+cluster1.acc<-cluster1.acc[c(2,6,7,5,1,3,4)]
+cluster1.shift<-table(cluster1$shift_day)
+cluster1.shift<-cluster1.shift[c(2,6,7,5,1,3,4)]
+barplot(cluster1.acc,main = "Accept Shifts in the first cluster for all the nurses")
+barplot(cluster1.shift, main = "Shifts day in the first cluster for all the nurses")
+
+rownames(release.shift)<-c("Weekday released","Weekend released")
+barplot(cluster1.weekend)
 
 
 ########### JV Thursday 3/11 ##############
