@@ -89,6 +89,7 @@ app_behavior <- data.frame(app_behavior,sesstion_date=as.Date(app_behavior$sessi
 app_behavior <- app_behavior[,c(-2)]
 app_behavior <- app_behavior[c(1,4,2,3)]
 avg.views <- aggregate(viewedShifts~pid,data=app_behavior,mean)
+avg.clicks <- aggregate(clickedShifts~pid,data = app_behavior,mean)
 total.views <- aggregate(viewedShifts~pid,app_behavior,FUN = "sum")
 total.clicks <- aggregate(clickedShifts~pid, app_behavior,FUN = "sum")
 maxday <- aggregate(sesstion_date~pid, data = app_behavior, FUN = max)
@@ -101,8 +102,13 @@ clicks_per_view <- total.clicks$clickedShifts / total.views$viewedShifts
 clicks_per_view <- data.frame(total.views$pid, clicks_per_view)
 colnames(clicks_per_view) <- c("pid","clicks_per_view")
 new_app_behavior <- left_join(total.views,total.clicks,by="pid")
+new_app_behavior <- left_join(new_app_behavior,avg.views, by="pid")
+new_app_behavior <- left_join(new_app_behavior,avg.clicks, by="pid")
 new_app_behavior <- left_join(new_app_behavior,days_between_first_and_last_app_open,by="pid")
 new_app_behavior <- left_join(new_app_behavior,clicks_per_view,by="pid")
+colnames(new_app_behavior)[2:3] <- c("total.viewedShifts","total.clickedShifts")
+colnames(new_app_behavior)[4:5] <- c("average.viewedShifts","average.clickedShifts")
+
 
 ###### nurse info feature & combine 3 datasets nurse info #####
 nurse_info<-data.frame(nurse_info, apply.time=as.Date(nurse_info$IP.Apply.Timestamp,"%Y-%m-%d"), first.accept.time=as.Date(nurse_info$first_accept_timestamp,"%Y-%m-%d"),first.shift=as.Date(nurse_info$first_shift_timestamp,"%Y-%m-%d"),fifth.shift=as.Date(nurse_info$fifth_shift_timestamp,"%Y-%m-%d"),termination_date=as.Date(nurse_info$termination_timestamp,"%Y-%m-%d"))
@@ -122,24 +128,95 @@ new_nurse_info4 <- left_join(new_nurse_info3, accept_behaivor_no_release, by="pi
 new_nurse_info4 <- new_nurse_info4[,-c(24,25)]
 
 new_nurse_info5 <- left_join(new_nurse_info3,new_app_behavior,by="pid")
-new_nurse_info5 <- new_nurse_info5[,-c(5,6,8,9,11)]
+new_nurse_info5 <- new_nurse_info5[,-c(5,6,8,9,12)]
 new_nurse_info5$day.diff <- na.locf(new_nurse_info5$day.diff,fromLast = TRUE)
-colnames(new_nurse_info5)[10] <- "average_days_between_shifts_days_and_accept_days"
+colnames(new_nurse_info5)[10] <- "average_days_difference_between_shifts_days_and_accept_days"
 accept_behaivor_no_release$accepts = c(rep(1,))
 pid_vs_accepted_shifts = aggregate(accept_behaivor_no_release$accepts, by=list(pid=accept_behaivor_no_release$pid), FUN=sum)
 new_nurse_info5 <- left_join(new_nurse_info5,pid_vs_accepted_shifts,by="pid")
-colnames(new_nurse_info5)[15] <- "total_accepted_shifts"
-new_nurse_info5 <- new_nurse_info5[,c(1,2,3,4,5,6,7,8,9,11,12,13,14,10,15)]
+colnames(new_nurse_info5)[17] <- "total_accepted_shifts"
 new_nurse_info5$total_accepted_shifts <-na.locf(new_nurse_info5$total_accepted_shifts,fromLast = TRUE)
+new_nurse_info5 <- new_nurse_info5[,c(1:9,11,12,13,14,16,15,10,17,18)]
 attach(new_nurse_info3)
 attach(new_nurse_info6)
 
-new_nurse_info6 <- new_nurse_info5[,-c(1:4)]
+new_nurse_info6 <- new_nurse_info5[,-c(1:4,7)]
 nurse_info6.scale <- new_nurse_info6 %>%
-  mutate_at(c("date.diff", "day.diff.first_fifth", "Prior.Work.History..years.", "Prior.Work.History..distinct.jobs.", "viewedShifts" , "clickedShifts","days_between_first_and_last_app_open", "clicks_per_view","average_days_between_shifts_days_and_accept_days","total_accepted_shifts"), ~(scale(.) %>% as.vector))
+  mutate_at(c("date.diff", "day.diff.first_fifth", "Prior.Work.History..years.", 
+              "Prior.Work.History..distinct.jobs.", "average.viewedShifts" , "average.clickedShifts","days_between_first_and_last_app_open", 
+              "clicks_per_view","average_days_difference_between_shifts_days_and_accept_days","total_accepted_shifts",
+              "total.viewedShifts","total.clickedShifts"), ~(scale(.) %>% as.vector))
 nurse_info6.scale$Prior.Work.History..years. <- na.locf(nurse_info6.scale$Prior.Work.History..years.,fromLast = TRUE)
 nurse_info6.pca <- prcomp(nurse_info6.scale,scale. = FALSE)
-biplot(nurse_info6.pca,scale = 0)
+fviz_eig(nurse_info6.pca, addlabels = TRUE, ylim = c(0, 50))
+fviz_pca_biplot(nurse_info6.pca, label = "var", ggtheme = theme_minimal())
+fviz_pca_var(nurse_info6.pca, col.var = "black")
 autoplot(nurse_info6.pca)
 set.seed(7000)
 autoplot(kmeans(nurse_info6.scale,2),data = nurse_info6.scale, main = "PID Clusters: PCA + K-Mean Clusters")
+cluster.data<-kmeans(nurse_info6.scale,2)
+cluster<-cluster.data$cluster
+
+kNNdistplot(nurse_info6.scale, k = 10)
+abline(h=3, col = "red", lty=2)
+db.fpc<-fpc::dbscan(nurse_info6.scale,eps=2.25,MinPts = 3)
+fviz_cluster(db.fpc,nurse_info6.scale, stand = FALSE, geom = "point",main = "PID Clusters: PCA + DBSCAN Clusters")
+
+new_nurse_info5 <- new_nurse_info5[,-c(7)]
+new_nurse_info5 <- data.frame(new_nurse_info5,cluster)
+
+accpet_shift_date <- data.frame(accept_behaivor_no_release$pid,accept_behaivor_no_release$shift_date)
+colnames(accpet_shift_date)<-c("pid","shift_date")
+
+byweek.app<-app_behavior %>% 
+  group_by(week = format(sesstion_date, '%Y-%U')) 
+byweek.shift<-accept_behaivor_no_release %>% 
+  group_by(week = format(shift_date, "%Y-%U"))
+
+new_nurse_info5_clustered <- new_nurse_info5[,c(1:9,11,12,13,14,16,15,10,17,18)]
+
+new_nurse_info7 <- left_join(new_nurse_info5,byweek.app,by="pid")
+new_nurse_info7 <- left_join(new_nurse_info7,byweek.shift,by="pid")
+
+########## Supervised Learning Techniques ############
+median.avgDaydiff <- median(new_nurse_info5_clustered$average_days_difference_between_shifts_days_and_accept_days)
+new.avgDaydiff <- as.numeric(new_nurse_info5_clustered$average_days_difference_between_shifts_days_and_accept_days > median.avgDaydiff)
+newdata <- data.frame(new_nurse_info5_clustered,new.avgDaydiff)
+newdata <- newdata[,-c(2:4,7)]
+newdata$Prior.Work.History..years. <- na.locf(newdata$Prior.Work.History..years.,fromLast = TRUE)
+View(newdata)
+sapply(newdata,class)
+col.name <- c("date.diff","day.diff.first_fifth","Prior.Work.History..distinct.jobs.","total.clickedShifts","days_between_first_and_last_app_open","total.viewedShifts","cluster")
+newdata[col.name] <- sapply(newdata[col.name],as.numeric)
+View(cor(newdata))
+set.seed(9104)
+v<-sort(sample(1:nrow(new_nurse_info5_clustered),3000))
+newdata.test<-newdata[v,]
+newdata.train<-newdata[-v,]
+dim(newdata.test)
+dim(newdata.train)
+### logistic regression ###
+attach(newdata)
+glm_fits<-glm(new.avgDaydiff~average_days_difference_between_shifts_days_and_accept_days,newdata.train,family = binomial)
+summary(glm_fits)
+coef(glm_fits)
+glm_prob<-predict(glm_fits,newdata.test,type = "response")
+glm_pred<-rep("0",3000)
+glm_pred[glm_prob>0.5]="1"
+test_response<-newdata$new.avgDaydiff[v]
+table(glm_pred,test_response)
+mean(glm_pred==test_response)
+length(test_response)
+length(glm_pred)
+### LDA ###
+lda.fit<-lda(new.avgDaydiff~average_days_difference_between_shifts_days_and_accept_days,data=newdata.train)
+lda.fit
+plot(lda.fit)
+lda.pred<-predict(lda.fit,newdata.test)
+names(lda.pred)
+lda.class<-lda.pred$class
+sum(lda.pred$posterior[,1]>0.5)
+sum(lda.pred$posterior[,1]<0.5)
+table(lda.class,test_response)
+mean(lda.class==test_response)
+mean(lda.class!=test_response)
