@@ -6,12 +6,4 @@ IntelyCare uses data and technology to help long-term care facilities find the e
 
 These behavioral cohorts will allow us to personalize the nurse experience in important ways. We can send more timely and relevant communications, improve our in-app shift recommendations, and offer more effective promotions if we understand what behavior patterns characterize a given nursing professional. 
 
-For this project, we will use some machine learning techniques such as PCA, k-mean cluestring and other statistical techniques. 
-
-## Week 1 to 5:
-
-Build knowledeges for the project such as clustering and classification in Machine Learning filed. We also did some data pre-processing and data visualization for the dataset to see the features of the data by pid. 
-
-## Weel 6 to 7:
-
-Will apply PCA and k-mean clustering method to data set. 
+For this project, we used several unsupervised learning techniques and supervised learning techniques to achieve the problems we metioned. 
